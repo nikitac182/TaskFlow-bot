@@ -33,7 +33,7 @@ async def start(message: Message):
 
     await message.answer('Выбери кнопку: ', reply_markup=kb)
 
-register_admin_commands(db)
+register_admin_commands(dp, db)
 
 class WithDrawState(StatesGroup):
     amount = State()
