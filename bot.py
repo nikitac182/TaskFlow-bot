@@ -3,7 +3,7 @@ import aiosqlite
 from aiogram import Bot, Dispatcher
 from const import TOKEN
 from routers.user import router as user_router, setup_router
-from routers.admin import router as admin_router, register_admin_commands
+# from routers.admin import router as admin_router, register_admin_commands
 
 tasks = {
     "1": "Задание №1:\nПодпишись на канал и отправь скрин",
@@ -16,7 +16,7 @@ tasks = {
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
-dp.include_router(admin_router)
+# dp.include_router(admin_router)
 dp.include_router(user_router)
 db = None
 
@@ -26,17 +26,39 @@ async def main():
     db = await aiosqlite.connect("sqlite.db")
 
     setup_router(bot=bot, db=db, tasks=tasks)
-    register_admin_commands(dp, db)
+    # register_admin_commands(dp, db)
 
-    await db.execute(
+    await db.executescript(
     """
     CREATE TABLE IF NOT EXISTS users (
-        user_id INTEGER PRIMARY KEY,
-        balance INTEGER DEFAULT 0,
-        phone TEXT
-    )
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        telegram_id INTEGER UNIQUE,
+        username TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_admin BOOLEAN
+    );
+
+    CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        description TEXT,
+        status TEXT DEFAULT "new",
+        assigned_to INTEGER,
+        created_by INTEGER,
+        created_ad TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    CREATE TABLE IF NOT EXISTS submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER,
+        user_id INTEGER,
+        text TEXT,
+        file_id INTEGER,
+        status TEXT DEFAULT "pending",
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     """
-    )
+)
 
     await db.commit()
     

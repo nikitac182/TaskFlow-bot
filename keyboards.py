@@ -3,10 +3,10 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKe
 
 kb = ReplyKeyboardMarkup(
     keyboard=[
+        [KeyboardButton(text="Мои задачи")],
+        [KeyboardButton(text="Отправить выполнение")],
         [KeyboardButton(text="Профиль")],
-        [KeyboardButton(text="Задания")],
         [KeyboardButton(text="Поддержка")],
-        [KeyboardButton(text="Вывод")],
     ],
     resize_keyboard=True,
 )
@@ -30,10 +30,7 @@ on_tasks_kb = ReplyKeyboardMarkup(
 
 admin_kb = InlineKeyboardMarkup(
     inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Увеличить баланс", callback_data="add_balance"),
-            InlineKeyboardButton(text="Уменьшить баланс", callback_data="reduce_balance")
-        ],
+        [InlineKeyboardButton(text="Добавить задачу", callback_data="add_task")],
 
         [InlineKeyboardButton(text="Изменить номер", callback_data="change_number") ],
 
