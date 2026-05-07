@@ -4,6 +4,7 @@ from aiogram import Dispatcher
 from aiogram.types import Message
 from aiogram.filters import Command
 from const import ADMIN_ID
+from keyboards import admin_kb
 
 def is_valid_phone(phone: str) -> bool:
     pattern = r"^\+?[0-9]{10,15}$"
@@ -16,107 +17,107 @@ def register_admin_commands(
         db: aiosqlite.Connection,
     ):
 
-    @dispatcher.message(Command("add"))
-    async def add_money(message: Message):
+    @dispatcher.message(Command("admin"))
+    async def admin(message: Message):
         if message.from_user.id != ADMIN_ID:
             return
-        
-        try:
-            _, user_id, amount = message.text.split()
+        else:
+            await message.answer("Вы в админ-зоне", reply_markup=admin_kb)
 
-            amount = int(amount)
-            user_id = int(user_id)
+            @dispatcher.message(Command("add"))
+            async def add_money(message: Message):
+                
+                try:
+                    _, user_id, amount = message.text.split()
 
-            await db.execute('''
-                UPDATE users
-                SET balance = balance + ?
-                WHERE user_id = ?;
-                ''', (amount, user_id)
-                )
-            await db.commit()
+                    amount = int(amount)
+                    user_id = int(user_id)
 
-            await message.answer("Начислено ✅")
+                    await db.execute('''
+                        UPDATE users
+                        SET balance = balance + ?
+                        WHERE user_id = ?;
+                        ''', (amount, user_id)
+                        )
+                    await db.commit()
 
-        except Exception as e:
-            print(e)
-            await message.answer("Ошибка начисления.")
+                    await message.answer("Начислено ✅")
 
-    @dispatcher.message(Command("reduce"))
-    async def reduce_money(message: Message):
+                except Exception as e:
+                    print(e)
+                    await message.answer("Ошибка начисления.")
 
-        if message.from_user.id != ADMIN_ID:
-            return
-        
-        try:
-            _, user_id, amount = message.text.split()
+            @dispatcher.message(Command("reduce"))
+            async def reduce_money(message: Message):
+                
+                try:
+                    _, user_id, amount = message.text.split()
 
-            user_id = int(user_id)
-            amount = int(amount)
+                    user_id = int(user_id)
+                    amount = int(amount)
 
-            result = await db.execute(
-                '''
-                SELECT balance
-                FROM users
-                WHERE user_id = ?
-                ''',
-                (user_id,)
-            )
+                    result = await db.execute(
+                        '''
+                        SELECT balance
+                        FROM users
+                        WHERE user_id = ?
+                        ''',
+                        (user_id,)
+                    )
 
-            result = await result.fetchone()
+                    result = await result.fetchone()
 
-            if result is None:
-                await message.answer("Пользователь не найден.")
-                return
+                    if result is None:
+                        await message.answer("Пользователь не найден.")
+                        return
 
-            current_balance = result[0]
+                    current_balance = result[0]
 
-            if current_balance < amount:
-                await message.answer("Не хватает средств.")
-                return
+                    if current_balance < amount:
+                        await message.answer("Не хватает средств.")
+                        return
 
-            await db.execute(
-                '''
-                UPDATE users
-                SET balance = balance - ?
-                WHERE user_id = ?;
-                ''',
-                (amount, user_id)
-            )
+                    await db.execute(
+                        '''
+                        UPDATE users
+                        SET balance = balance - ?
+                        WHERE user_id = ?;
+                        ''',
+                        (amount, user_id)
+                    )
 
-            await db.commit()
+                    await db.commit()
 
-            await message.answer("Списано ✅")
-            
-        except Exception as e:
-            print(e)
-            await message.answer("Ошибка списания.")
+                    await message.answer("Списано ✅")
+                    
+                except Exception as e:
+                    print(e)
+                    await message.answer("Ошибка списания.")
 
-    @dispatcher.message(Command("phone"))
-    async def set_phone(message: Message):
-        if message.from_user.id != ADMIN_ID:
-            return
-        
-        try:
-            
-            _, user_id, phone = message.text.split()
+            @dispatcher.message(Command("phone"))
+            async def set_phone(message: Message):
+                
+                try:
+                    
+                    _, user_id, phone = message.text.split()
 
-            user_id = int(user_id)
+                    user_id = int(user_id)
 
-            if not is_valid_phone(phone):
-                await Exception
+                    if not is_valid_phone(phone):
+                        await Exception
 
-            await db.execute(
-                '''
-                UPDATE users
-                SET phone = (?)
-                WHERE user_id = (?);
-                ''',
-                (phone, user_id)
-            )
+                    await db.execute(
+                        '''
+                        UPDATE users
+                        SET phone = (?)
+                        WHERE user_id = (?);
+                        ''',
+                        (phone, user_id)
+                    )
 
-            await db.commit()
+                    await db.commit()
 
-            await message.answer("Номер обновлен ✅")
-        except Exception as e:
-            print(e)
-            await message.answer("Ошибка установления номера.")
+                    await message.answer("Номер обновлен ✅")
+                except Exception as e:
+                    print(e)
+                    await message.answer("Ошибка установления номера.")

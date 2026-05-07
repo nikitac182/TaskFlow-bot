@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from const import ADMIN_ID, ADMIN_USERNAME, TOKEN
 from keyboards import kb, tasks_kb, on_tasks_kb
 from admin import register_admin_commands
@@ -130,6 +130,13 @@ async def frocess_withdraw_number(message: Message, state: FSMContext):
     await message.answer('Ваша заявка отправлена ✅')
 
     await state.clear()
+
+@dp.callback_query()
+async def callback(call: CallbackQuery):
+    
+    await call.answer()
+
+
 
 async def main():
     global db

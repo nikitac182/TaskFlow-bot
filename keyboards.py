@@ -24,6 +24,13 @@ tasks_kb = ReplyKeyboardMarkup(
 on_tasks_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Выполнил"), KeyboardButton(text="Назад")]
-    ]
+    ],
+    resize_keyboard=True,
 )
 
+admin_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="Добавить", callback_data="test") ]
+    ],
+    resize_keyboard=True,
+)
