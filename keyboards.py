@@ -30,7 +30,21 @@ on_tasks_kb = ReplyKeyboardMarkup(
 
 admin_kb = InlineKeyboardMarkup(
     inline_keyboard=[
-        [InlineKeyboardButton(text="Добавить", callback_data="test") ]
+        [
+            InlineKeyboardButton(text="Увеличить баланс", callback_data="test"),
+            InlineKeyboardButton(text="Уменьшить баланс", callback_data="test")
+        ],
+
+        [InlineKeyboardButton(text="Изменить номер", callback_data="test") ],
+
+        [
+            InlineKeyboardButton(text="Пользователи", callback_data="test"),
+            InlineKeyboardButton(text="Админы", callback_data="test")  
+        ],
+
+        [InlineKeyboardButton(text="Задания", callback_data="test") ],
+        
+        [InlineKeyboardButton(text="Заявки", callback_data="test") ],
     ],
     resize_keyboard=True,
 )
