@@ -1,0 +1,21 @@
+# Виртуальное окружение
+venv/
+.venv/
+
+# Переменные окружения
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# База данных
+*.db
+*.sqlite
+*.sqlite3
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
