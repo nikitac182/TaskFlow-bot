@@ -1,5 +1,5 @@
 import asyncio
-import sqlite3
+import aiosqlite
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.state import StatesGroup, State
@@ -8,7 +8,6 @@ from aiogram.types import Message
 from const import ADMIN_ID, ADMIN_USERNAME, TOKEN
 from keyboards import kb, tasks_kb, on_tasks_kb
 from admin import register_admin_commands
-from const import ADMIN_ID, ADMIN_USERNAME, TOKEN
 
 tasks = {
     "1": "Задание №1:\nПодпишись на канал и отправь скрин",
@@ -18,34 +17,23 @@ tasks = {
     "5": "Задание №5:\n..."
 }
 
-con = sqlite3.connect('sqlite.db')
-cur = con.cursor()
-
-cur.execute(''' 
-CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY,
-    balance INTEGER DEFAULT 0,
-    number INTEGER
-    );
-''')
-
-con.commit()
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+db = None
 
 
 @dp.message(CommandStart())
 async def start(message: Message):
-    cur.execute('''
+    await db.execute('''
         INSERT OR IGNORE INTO users (user_id) VALUES (?);
         ''', (message.from_user.id,)
     )
-    con.commit()
+    await db.commit()
 
     await message.answer('Выбери кнопку: ', reply_markup=kb)
 
-register_admin_commands(dp, bot, con, cur)
+register_admin_commands(db)
 
 class WithDrawState(StatesGroup):
     amount = State()
@@ -54,11 +42,11 @@ class WithDrawState(StatesGroup):
 
 @dp.message(lambda message: message.text == 'Профиль')
 async def profile(message: Message):
-    cur.execute('''
+    result = await db.execute('''
         SELECT balance FROM users WHERE user_id = ?
         ''', (message.from_user.id,)
-    )
-    balance = cur.fetchone()[0]
+    ).fetchone()
+    balance = result[0]
     await message.answer(f'Твой баланс {balance} руб.')
 
 @dp.message(lambda message: message.text == 'Задания')
@@ -93,10 +81,12 @@ async def process_withdraw(message: Message, state: FSMContext):
     
     amount = int(message.text)
     
-    balance = cur.execute(
+    result = await  db.execute(
         '''SELECT balance FROM users WHERE user_id = ?''',
         (message.from_user.id,)
-    ).fetchone()[0]
+    ).fetchone()
+
+    balance = result[0]
 
     if amount > balance:
         await message.answer('Недостаточно средств')
@@ -128,7 +118,23 @@ async def frocess_withdraw_number(message: Message, state: FSMContext):
     await state.clear()
 
 async def main():
-    await dp.start_polling(bot)
+    global db
+
+    db = await aiosqlite.connect("sqlite.db")
+
+    await db.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        user_id INTEGER PRIMARY KEY,
+        balance INTEGER DEFAULT 0
+    )
+    """)
+
+    await db.commit()
+
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await db.close()
 
 if __name__ == '__main__':
     asyncio.run(main())
