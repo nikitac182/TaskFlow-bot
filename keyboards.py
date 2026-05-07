@@ -26,3 +26,4 @@ on_tasks_kb = ReplyKeyboardMarkup(
         [KeyboardButton(text="Выполнил"), KeyboardButton(text="Назад")]
     ]
 )
+

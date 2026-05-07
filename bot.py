@@ -33,7 +33,6 @@ async def start(message: Message):
 
     await message.answer('Выбери кнопку: ', reply_markup=kb)
 
-register_admin_commands(dp, db)
 
 class WithDrawState(StatesGroup):
     amount = State()
@@ -45,7 +44,10 @@ async def profile(message: Message):
     result = await db.execute('''
         SELECT balance FROM users WHERE user_id = ?
         ''', (message.from_user.id,)
-    ).fetchone()
+    )
+
+    result = await result.fetchone()
+
     balance = result[0]
     await message.answer(f'Твой баланс {balance} руб.')
 
@@ -81,10 +83,12 @@ async def process_withdraw(message: Message, state: FSMContext):
     
     amount = int(message.text)
     
-    result = await  db.execute(
+    result = await db.execute(
         '''SELECT balance FROM users WHERE user_id = ?''',
         (message.from_user.id,)
-    ).fetchone()
+    )
+
+    result = await result.fetchone()
 
     balance = result[0]
 
@@ -94,7 +98,7 @@ async def process_withdraw(message: Message, state: FSMContext):
     
     await state.update_data(amount=amount)
 
-    await message.answer('Введите номер телеефона')
+    await message.answer('Введите номер телефона')
     await state.set_state(WithDrawState.number)
 
 @dp.message(WithDrawState.number)
@@ -104,6 +108,16 @@ async def frocess_withdraw_number(message: Message, state: FSMContext):
     amount = data['amount']
     card = message.text
 
+    await db.execute(
+        '''
+        UPDATE users
+        SET phone = ?
+        WHERE user_id = ?;
+        ''',
+        (card, message.from_user.id)
+    )
+
+    await db.commit()
 
     await bot.send_message(
         ADMIN_ID,
@@ -122,15 +136,20 @@ async def main():
 
     db = await aiosqlite.connect("sqlite.db")
 
-    await db.execute("""
+    register_admin_commands(dp, db)
+
+    await db.execute(
+    """
     CREATE TABLE IF NOT EXISTS users (
         user_id INTEGER PRIMARY KEY,
-        balance INTEGER DEFAULT 0
+        balance INTEGER DEFAULT 0,
+        phone TEXT
     )
-    """)
+    """
+    )
 
     await db.commit()
-
+    
     try:
         await dp.start_polling(bot)
     finally:
