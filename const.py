@@ -1,4 +1,8 @@
-ADMIN_ID = 1143200581
-ADMIN_USERNAME = '@Nekitnnn'
+import os
+from dotenv import load_dotenv
 
-TOKEN = '8735362464:AAFx7-85-JaPgZgbpBYnb0YPxdYE_CDivzQ'
+load_dotenv()
+
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
+TOKEN = os.getenv("TOKEN")

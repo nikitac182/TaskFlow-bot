@@ -8,6 +8,7 @@ from aiogram.types import Message
 from const import ADMIN_ID, ADMIN_USERNAME, TOKEN
 from keyboards import kb, tasks_kb, on_tasks_kb
 from admin import register_admin_commands
+from const import ADMIN_ID, ADMIN_USERNAME, TOKEN
 
 tasks = {
     "1": "Задание №1:\nПодпишись на канал и отправь скрин",
