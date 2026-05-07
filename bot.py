@@ -2,10 +2,12 @@ import asyncio
 import sqlite3
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
-from const import *
+from aiogram.types import Message
+from const import ADMIN_ID, ADMIN_USERNAME, TOKEN
+from keyboards import kb, tasks_kb, on_tasks_kb
+from admin import register_admin_commands
 
 tasks = {
     "1": "Задание №1:\nПодпишись на канал и отправь скрин",
@@ -31,25 +33,6 @@ con.commit()
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-kb = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Профиль")],
-        [KeyboardButton(text="Задания")],
-        [KeyboardButton(text="Поддержка")],
-        [KeyboardButton(text="Вывод")],
-    ],
-    resize_keyboard=True,
-)
-
-tasks_kb = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="1"), KeyboardButton(text="2")],
-        [KeyboardButton(text="3")],
-        [KeyboardButton(text="4")],
-        [KeyboardButton(text="Назад")]
-    ], 
-    resize_keyboard=True,
-)
 
 @dp.message(CommandStart())
 async def start(message: Message):
@@ -61,61 +44,12 @@ async def start(message: Message):
 
     await message.answer('Выбери кнопку: ', reply_markup=kb)
 
+register_admin_commands(dp, bot, con, cur)
+
 class WithDrawState(StatesGroup):
     amount = State()
     number = State()
 
-
-@dp.message(Command("add"))
-async def add_money(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    
-    try:
-        _, user_id, amount = message.text.split()
-
-        cur.execute('''
-            UPDATE users SET balance = balance + ? WHERE user_id = ?;
-            ''', (int(amount), int(user_id))
-            )
-        con.commit()
-
-        await message.answer("Начислено ✅")
-
-    except:
-        await message.answer("Ошибка начисления")
-
-@dp.message(Command("reduce"))
-async def reduce_money(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    
-    try:
-        _, user_id, amount = message.text.split()
-
-        result = cur.execute(
-            '''SELECT balance FROM users WHERE user_id = ?''',
-            (int(user_id),)
-        ).fetchone()
-
-        if result is None:
-            await message.answer("Пользователь не найден.")
-
-        current_balance = result[0]
-
-        if (int(current_balance) - int(amount)) < 0:
-            await message.answer("Не хватает средств")
-            return
-
-        cur.execute('''
-            UPDATE users SET balance = balance - ? WHERE user_id = ?;
-            ''', (int(amount), int(user_id))
-        )
-        con.commit()
-        await message.answer("Списано ✅")
-        
-    except:
-        await message.answer("Произошла ошибка списания")
 
 @dp.message(lambda message: message.text == 'Профиль')
 async def profile(message: Message):
@@ -132,7 +66,7 @@ async def task_menu(message: Message):
     
 @dp.message(lambda message: message.text in tasks)
 async def send_task(message: Message):
-    await message.answer(tasks[message.text])
+    await message.answer(tasks[message.text], reply_markup=on_tasks_kb)
 
 @dp.message(lambda message: message.text == 'Назад')
 async def back(message: Message):
