@@ -10,20 +10,16 @@ from aiogram.fsm.context import FSMContext
 router = aiogram.Router()
 
 
-
 def setup_router(
         bot,
         db: aiosqlite.Connection,
     ):
 
-    async def my_func(
-        target: CallbackQuery,
+    async def render_task(
+        target: Message | CallbackQuery,
         page=0,
         is_back=False,
     ):
-
-        start = page * 5
-        end = start + 5
 
         offset = page * 5
 
@@ -39,10 +35,34 @@ def setup_router(
 
         results_tasks = await result.fetchall()
 
-        string = ''
+        # ____________ проверка след 5 значений
+        offset_2 = (page + 1) * 5
+
+        result_2 = await db.execute(
+            '''
+            SELECT title, description, status, id
+            FROM tasks
+            WHERE assigned_to = (?)
+            LIMIT 5 OFFSET ?
+            ''',
+            (target.from_user.id, offset_2)
+        )
+
+        results_tasks_must_be_empty = await result.fetchall()
+        #________________
+
+        # string = 'У вас пока нет задач.'
         buttons = []
 
-        
+        # if not results_tasks:
+        #     if isinstance(target, CallbackQuery):
+        #         await target.message.answer(string)
+        #     elif isinstance(target, Message):
+        #         await target.answer(string)
+        #     return 
+
+        string = ''
+
         for result in results_tasks:
             
             string += f'{status_form[result[2]][0]} Задача: {result[0]}\n Статус: {status_form[result[2]][1]}\n_________________\n'
@@ -63,11 +83,17 @@ def setup_router(
                     )
                 ]
             )
-        else:
+        elif not results_tasks_must_be_empty:
             buttons.append(
-            [InlineKeyboardButton(text="⬅️",callback_data=f"back_{page - 1}"),
-             InlineKeyboardButton(text="➡️",callback_data=f"page_{page + 1}")
-             ]
+                [InlineKeyboardButton(text="⬅️",callback_data=f"back_{page - 1}"),
+                ]
+            )
+
+        elif page > 0:
+            buttons.append(
+                [InlineKeyboardButton(text="⬅️",callback_data=f"back_{page - 1}"),
+                InlineKeyboardButton(text="➡️",callback_data=f"page_{page + 1}")
+                ]
             )
 
 
@@ -83,6 +109,53 @@ def setup_router(
 
         elif isinstance(target, Message):
             await target.answer(string, reply_markup=on_tasks_kb)
+
+
+    async def render_description(
+            call: CallbackQuery,
+            id
+        ):
+        result = await db.execute(
+                '''
+                SELECT *
+                FROM tasks
+                WHERE id = (?)
+                ''',
+                (id, )
+            )
+
+        result = await result.fetchone()
+
+        id, title, description, status, assigned_to, created_by, created_at, materials, deadline = result
+
+        user = await bot.get_chat(assigned_to)
+
+        string_task = f'''
+📋 Задача {id}
+
+━━━━━━━━━━━━━━━
+
+📝 Название:
+{title}
+
+📄 Описание:
+{description}
+
+📎 Материалы:
+{materials}
+
+⏰ Дедлайн:
+{deadline}
+
+📌 Статус:
+{status_form[status][0]} {status_form[status][1]}
+
+━━━━━━━━━━━━━━━
+
+👤 Исполнитель:
+@{user.username}
+'''
+        await call.message.edit_text(string_task, reply_markup=back_kb)
 
 
     @router.message(CommandStart())
@@ -140,70 +213,27 @@ def setup_router(
     @router.message(lambda message: message.text == 'Мои задачи')
     async def task_menu(message: Message):
 
-        await my_func(message, page=0)
+        await render_task(message, page=0)
 
     @router.callback_query()
-    async def callbacks(call: CallbackQuery):
+    async def callbacks(call: CallbackQuery, state: FSMContext):
 
         await call.answer()
 
-        current_page = 0
+        data = await state.get_data()
+        current_page = data.get('current_page', 0)
 
         if call.data.startswith('task_data_'):
-
             id = call.data.split('_')[-1]
+            await render_description(call, id)
 
-            result = await db.execute(
-                '''
-                SELECT *
-                FROM tasks
-                WHERE id = (?)
-                ''',
-                (id, )
-            )
-
-            result = await result.fetchone()
-
-            id, title, description, status, assigned_to, created_by, created_at, materials, deadline = result
-
-            user = await bot.get_chat(1143200581)
-
-            string_task = f'''
-📋 Задача {id}
-
-━━━━━━━━━━━━━━━
-
-📝 Название:
-{title}
-
-📄 Описание:
-{description}
-
-📎 Материалы:
-{materials}
-
-⏰ Дедлайн:
-{deadline}
-
-📌 Статус:
-{status_form[status][0]} {status_form[status][1]}
-
-━━━━━━━━━━━━━━━
-
-👤 Исполнитель:
-@{user.username}
-'''
-            await call.message.edit_text(string_task, reply_markup=back_kb)
-
-        elif call.data == 'back':
-
-            await my_func(call, page=current_page)
+        elif call.data == 'p_back':
+            await render_task(call, page=current_page)
         
-        elif call.data.startswith('page'):
+        elif call.data.startswith('page_') or call.data.startswith('back_'):
             page = int(call.data.split('_')[-1])
-            current_page += 1
-            await my_func(call, page=page)
-
+            await state.update_data(current_page=page)
+            await render_task(call, page=page)
 
 
     @router.message(lambda message: message.text == 'Поддержка')
