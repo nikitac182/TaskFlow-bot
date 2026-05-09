@@ -48,7 +48,7 @@ def setup_router(
             (target.from_user.id, offset_2)
         )
 
-        results_tasks_must_be_empty = await result.fetchall()
+        results_tasks_must_be_empty = await result_2.fetchall()
         #________________
 
         # string = 'У вас пока нет задач.'
@@ -158,6 +158,24 @@ def setup_router(
         await call.message.edit_text(string_task, reply_markup=back_kb)
 
 
+    async def render_submitions(
+            call: CallbackQuery
+    ):
+        string = '''
+📎 Отправьте выполнение задачи.
+
+Можно отправить:
+• текст
+• ссылку
+• фото
+• файл
+• архив
+• видео
+
+'''
+
+        await call.message.edit_text(string, reply_markup=back_kb_2)
+
     @router.message(CommandStart())
     async def start(message: Message):
         await db.execute('''
@@ -222,18 +240,26 @@ def setup_router(
 
         data = await state.get_data()
         current_page = data.get('current_page', 0)
+        id = data.get('id', 0)
 
         if call.data.startswith('task_data_'):
             id = call.data.split('_')[-1]
+            await state.update_data(id=id)
             await render_description(call, id)
 
         elif call.data == 'p_back':
             await render_task(call, page=current_page)
+
+        elif call.data == 'p_back_2':
+            await render_description(call, id=id)
         
         elif call.data.startswith('page_') or call.data.startswith('back_'):
             page = int(call.data.split('_')[-1])
             await state.update_data(current_page=page)
             await render_task(call, page=page)
+        
+        elif call.data == 'make_task':
+            await render_submitions(call)
 
 
     @router.message(lambda message: message.text == 'Поддержка')

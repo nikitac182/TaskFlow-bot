@@ -3,7 +3,6 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKe
 kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Мои задачи")],
-        [KeyboardButton(text="Отправить выполнение")],
         [KeyboardButton(text="Профиль")],
         [KeyboardButton(text="Поддержка")],
     ],
@@ -22,7 +21,14 @@ tasks_kb = ReplyKeyboardMarkup(
 
 back_kb = InlineKeyboardMarkup(
     inline_keyboard=[
+        [InlineKeyboardButton(text="Выполнить", callback_data="make_task")],
         [InlineKeyboardButton(text="⬅️", callback_data="p_back")]
+    ]
+)
+
+back_kb_2 = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️", callback_data="p_back_2")]
     ]
 )
 
