@@ -6,3 +6,11 @@ load_dotenv()
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 TOKEN = os.getenv("TOKEN")
+
+status_form = {
+    'rejected': ('🔴', 'отклонена'),
+    'accepted': ('🟢', 'принята'),
+    'submitted': ('🔵', 'на расмотреннии'),
+    'in_progress': ('🟠', 'в процессе'),
+    'new': ('🆕', 'новая'),
+}

@@ -1,5 +1,6 @@
 import aiogram
-from aiogram.types import Message
+import aiosqlite
+from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart
 from const import *
 from keyboards import *
@@ -8,7 +9,10 @@ from aiogram.fsm.context import FSMContext
 
 router = aiogram.Router()
 
-def setup_router(bot, db, tasks):
+def setup_router(
+        bot,
+        db: aiosqlite.Connection,
+    ):
 
     
     @router.message(CommandStart())
@@ -25,122 +29,220 @@ def setup_router(bot, db, tasks):
     async def profile(message: Message):
         result = await db.execute(
             '''
-            SELECT is_admin, created_at  
-            FROM users 
-            WHERE telegram_id = ?
-            ''', (message.from_user.id, )
+            SELECT COUNT(*)  
+            FROM tasks 
+            WHERE assigned_to = ? AND status = "accepted"
+            ''', (message.from_user.id,)
         )
-
         result = await result.fetchone()
 
-        is_admin, created_at = result
+        result_2 = await db.execute(
+            '''
+            SELECT COUNT(*)  
+            FROM tasks 
+            WHERE assigned_to = ? AND status = "in_progress"
+            ''', (message.from_user.id,)
+        )
+        result_2 = await result_2.fetchone()
 
-        admin_status = '✅' if is_admin else '❌'
-
-        tasks_done, active_tasks, rating = [None for _ in range(3)]
+        tasks_done = result[0]
+        active_tasks = result_2[0]
+        rating = None
 
         await message.answer(
-                f"""
-            👤 <b>Твой профиль</b>
+    f"""
+👋 Добро пожаловать, <b>{message.from_user.full_name}</b>
 
-            ━━━━━━━━━━━━━━━
+🪪 <b>Ваш профиль:</b>
 
-            🆔 ID: <code>{message.from_user.id}</code>
+• ID: <code>{message.from_user.id}</code>
+• Username: @{message.from_user.username}
 
+📊 <b>Статистика</b>
+├ Выполнено задач: {tasks_done}
+├ Активных задач: {active_tasks}
+└ Рейтинг: {rating}
 
-            👤 Username: @{message.from_user.username}
+🚀 Продолжай выполнять задания!
+""",
+    parse_mode="HTML"
+)
+    @router.message(lambda message: message.text == 'Мои задачи')
+    async def task_menu(message: Message):
 
-            📋 Задач выполнено: <b>{tasks_done}</b>
+        page = 0
+        start = page * 5
+        end = start + 5
 
-            📌 Активных задач: <b>{active_tasks}</b>
+        offset = page * 5
 
-            ⭐ Рейтинг: <b>{rating}</b>
-
-            Admin status: {admin_status}
-
-            ━━━━━━━━━━━━━━━
-
-            📅 Дата регистрации:
-            <b>{created_at}</b>
-            """,
-            parse_mode="HTML"
+        result = await db.execute(
+            '''
+            SELECT title, description, status, id
+            FROM tasks
+            WHERE assigned_to = (?)
+            LIMIT 5 OFFSET ?
+            ''',
+            (message.from_user.id, offset)
         )
-    # @router.message(lambda message: message.text == 'Задания')
-    # async def task_menu(message: Message):
-    #     await message.answer('Выбери номер задания', reply_markup=tasks_kb)
+
+        results_tasks = await result.fetchall()
+
+        string = ''
+        buttons = []
+
         
-    # @router.message(lambda message: message.text in tasks)
-    # async def send_task(message: Message):
-    #     await message.answer(tasks[message.text], reply_markup=on_tasks_kb)
+        for result in results_tasks:
+            
+            string += f'{status_form[result[2]][0]} Задача: {result[0]}\n Статус: {status_form[result[2]][1]}\n_________________\n'
 
-    # @router.message(lambda message: message.text == 'Назад')
-    # async def back(message: Message):
-    #     await message.answer("Главное меню", reply_markup=kb)
+            buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=f"Описание для '{result[0]}' ",
+                    callback_data=f"task_data_{result[3]}"
+                    )
+                ]
+            )
 
-    # @router.message(lambda message: message.text == 'Поддержка')
-    # async def support(message: Message):
-    #     await message.answer(
-    #         f'По всем вопросам:\n{ ADMIN_USERNAME }'
-    #     )
+        if page == 0:
+            buttons.append(
+            [
+                InlineKeyboardButton(
+                    text="➡️",
+                    callback_data=f"123"
+                    )
+                ]
+            )
+        else:
+            buttons.remove(
+                [
+                InlineKeyboardButton(
+                    text="➡️",
+                    callback_data=f"123"
+                    )
+                ]
+            )
 
-    # @router.message(lambda message: message.text == "Вывод")
-    # async def withdraw(message: Message, state: FSMContext):
-    #     await message.answer('Введите сумму для вывода:')
-    #     await state.set_state(WithDrawState.amount)
+        on_tasks_kb = InlineKeyboardMarkup(
+            inline_keyboard=buttons
+        )
+        await message.answer(string, reply_markup=on_tasks_kb)
 
-    # @router.message(WithDrawState.amount)
-    # async def process_withdraw(message: Message, state: FSMContext):
+    @router.callback_query()
+    async def callbacks(call: CallbackQuery):
 
-    #     if not message.text.isdigit():
-    #         await message.answer('Введите число')
-    #         return 
-        
-    #     amount = int(message.text)
-        
-    #     result = await db.execute(
-    #         '''SELECT balance FROM users WHERE user_id = ?''',
-    #         (message.from_user.id,)
-    #     )
+        if call.data.startswith('task_data_'):
 
-    #     result = await result.fetchone()
+            id = call.data.split('_')[-1]
 
-    #     balance = result[0]
+            result = await db.execute(
+                '''
+                SELECT *
+                FROM tasks
+                WHERE id = (?)
+                ''',
+                (id, )
+            )
 
-    #     if amount > balance:
-    #         await message.answer('Недостаточно средств')
-    #         return 
-        
-    #     await state.update_data(amount=amount)
+            result = await result.fetchone()
 
-    #     await message.answer('Введите номер телефона')
-    #     await state.set_state(WithDrawState.number)
+            id, title, description, status, assigned_to, created_by, created_at, materials, deadline = result
 
-    # @router.message(WithDrawState.number)
-    # async def frocess_withdraw_number(message: Message, state: FSMContext):
+            user = await bot.get_chat(1143200581)
 
-    #     data = await state.get_data()
-    #     amount = data['amount']
-    #     card = message.text
+            string_task = f'''
+📋 Задача {id}
 
-    #     await db.execute(
-    #         '''
-    #         UPDATE users
-    #         SET phone = ?
-    #         WHERE user_id = ?;
-    #         ''',
-    #         (card, message.from_user.id)
-    #     )
+━━━━━━━━━━━━━━━
 
-    #     await db.commit()
+📝 Название:
+{title}
 
-    #     await bot.send_message(
-    #         ADMIN_ID,
-    #         f"Заявка на вывод:\n"
-    #         f"Username: @{message.from_user.username}\n"
-    #         f"Сумма: {amount} руб.\n"
-    #         f"Номер телефона: {card}."
-    #     )
+📄 Описание:
+{description}
 
-    #     await message.answer('Ваша заявка отправлена ✅')
+📎 Материалы:
+{materials}
 
-    #     await state.clear()
+⏰ Дедлайн:
+{deadline}
+
+📌 Статус:
+{status_form[status][0]} {status_form[status][1]}
+
+━━━━━━━━━━━━━━━
+
+👤 Исполнитель:
+@{user.username}
+'''
+            await call.message.edit_text(string_task, reply_markup=back_kb)
+
+        elif call.data == 'back':
+
+            page = 0
+            start = page * 5
+            end = start + 5
+
+            offset = page * 5
+
+            result = await db.execute(
+                '''
+                SELECT title, description, status, id
+                FROM tasks
+                WHERE assigned_to = (?)
+                LIMIT 5 OFFSET ?
+                ''',
+                (call.from_user.id, offset)
+            )
+
+            results_tasks = await result.fetchall()
+
+            string = ''
+            buttons = []
+
+            
+            for result in results_tasks:
+                
+                string += f'{status_form[result[2]][0]} Задача: {result[0]}\n Статус: {status_form[result[2]][1]}\n_________________\n'
+
+                buttons.append(
+                [
+                    InlineKeyboardButton(
+                        text=f"Описание для '{result[0]}' ",
+                        callback_data=f"task_data_{result[3]}"
+                        )
+                    ]
+                )
+
+            if page == 0:
+                buttons.append(
+                [
+                    InlineKeyboardButton(
+                        text="➡️",
+                        callback_data=f"123"
+                        )
+                    ]
+                )
+            else:
+                buttons.remove(
+                    [
+                    InlineKeyboardButton(
+                        text="➡️",
+                        callback_data=f"123"
+                        )
+                    ]
+                )
+
+            on_tasks_kb = InlineKeyboardMarkup(
+                inline_keyboard=buttons
+            )
+            await call.message.edit_text(string, reply_markup=on_tasks_kb)
+
+
+
+    @router.message(lambda message: message.text == 'Поддержка')
+    async def support(message: Message):
+        await message.answer(
+            f'По всем вопросам:\n{ ADMIN_USERNAME }'
+        )

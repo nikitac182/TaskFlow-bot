@@ -1,6 +1,5 @@
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
-
 kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Мои задачи")],
@@ -21,11 +20,10 @@ tasks_kb = ReplyKeyboardMarkup(
     resize_keyboard=True,
 )
 
-on_tasks_kb = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Выполнил"), KeyboardButton(text="Назад")]
-    ],
-    resize_keyboard=True,
+back_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️", callback_data="back")]
+    ]
 )
 
 admin_kb = InlineKeyboardMarkup(

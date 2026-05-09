@@ -5,14 +5,6 @@ from const import TOKEN
 from routers.user import router as user_router, setup_router
 # from routers.admin import router as admin_router, register_admin_commands
 
-tasks = {
-    "1": "Задание №1:\nПодпишись на канал и отправь скрин",
-    "2": "Задание №2:\nПоставь лайк под постом",
-    "3": "Задание №3:\nПригласи друга",
-    "4": "Задание №4:\nЗайди на сайт бота",
-    "5": "Задание №5:\n..."
-}
-
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -25,7 +17,7 @@ async def main():
 
     db = await aiosqlite.connect("sqlite.db")
 
-    setup_router(bot=bot, db=db, tasks=tasks)
+    setup_router(bot=bot, db=db)
     # register_admin_commands(dp, db)
 
     await db.executescript(
