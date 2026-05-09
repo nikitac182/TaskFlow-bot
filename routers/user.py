@@ -9,12 +9,82 @@ from aiogram.fsm.context import FSMContext
 
 router = aiogram.Router()
 
+
+
 def setup_router(
         bot,
         db: aiosqlite.Connection,
     ):
 
-    
+    async def my_func(
+        target: CallbackQuery,
+        page=0,
+        is_back=False,
+    ):
+
+        start = page * 5
+        end = start + 5
+
+        offset = page * 5
+
+        result = await db.execute(
+            '''
+            SELECT title, description, status, id
+            FROM tasks
+            WHERE assigned_to = (?)
+            LIMIT 5 OFFSET ?
+            ''',
+            (target.from_user.id, offset)
+        )
+
+        results_tasks = await result.fetchall()
+
+        string = ''
+        buttons = []
+
+        
+        for result in results_tasks:
+            
+            string += f'{status_form[result[2]][0]} Задача: {result[0]}\n Статус: {status_form[result[2]][1]}\n_________________\n'
+
+            buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=f"Описание для '{result[0]}' ",
+                    callback_data=f"task_data_{result[3]}"
+                    )
+                ]
+            )
+        if page == 0:
+            buttons.append(
+            [InlineKeyboardButton(
+                    text="➡️",
+                    callback_data=f"page_{page + 1}"
+                    )
+                ]
+            )
+        else:
+            buttons.append(
+            [InlineKeyboardButton(text="⬅️",callback_data=f"back_{page - 1}"),
+             InlineKeyboardButton(text="➡️",callback_data=f"page_{page + 1}")
+             ]
+            )
+
+
+
+        on_tasks_kb = InlineKeyboardMarkup(
+            inline_keyboard=buttons
+        )
+        if isinstance(target, CallbackQuery):
+            if is_back:
+                await target.message.answer(string, reply_markup=on_tasks_kb)
+            else:
+                await target.message.edit_text(string, reply_markup=on_tasks_kb)
+
+        elif isinstance(target, Message):
+            await target.answer(string, reply_markup=on_tasks_kb)
+
+
     @router.message(CommandStart())
     async def start(message: Message):
         await db.execute('''
@@ -70,67 +140,14 @@ def setup_router(
     @router.message(lambda message: message.text == 'Мои задачи')
     async def task_menu(message: Message):
 
-        page = 0
-        start = page * 5
-        end = start + 5
-
-        offset = page * 5
-
-        result = await db.execute(
-            '''
-            SELECT title, description, status, id
-            FROM tasks
-            WHERE assigned_to = (?)
-            LIMIT 5 OFFSET ?
-            ''',
-            (message.from_user.id, offset)
-        )
-
-        results_tasks = await result.fetchall()
-
-        string = ''
-        buttons = []
-
-        
-        for result in results_tasks:
-            
-            string += f'{status_form[result[2]][0]} Задача: {result[0]}\n Статус: {status_form[result[2]][1]}\n_________________\n'
-
-            buttons.append(
-            [
-                InlineKeyboardButton(
-                    text=f"Описание для '{result[0]}' ",
-                    callback_data=f"task_data_{result[3]}"
-                    )
-                ]
-            )
-
-        if page == 0:
-            buttons.append(
-            [
-                InlineKeyboardButton(
-                    text="➡️",
-                    callback_data=f"123"
-                    )
-                ]
-            )
-        else:
-            buttons.remove(
-                [
-                InlineKeyboardButton(
-                    text="➡️",
-                    callback_data=f"123"
-                    )
-                ]
-            )
-
-        on_tasks_kb = InlineKeyboardMarkup(
-            inline_keyboard=buttons
-        )
-        await message.answer(string, reply_markup=on_tasks_kb)
+        await my_func(message, page=0)
 
     @router.callback_query()
     async def callbacks(call: CallbackQuery):
+
+        await call.answer()
+
+        current_page = 0
 
         if call.data.startswith('task_data_'):
 
@@ -180,64 +197,12 @@ def setup_router(
 
         elif call.data == 'back':
 
-            page = 0
-            start = page * 5
-            end = start + 5
-
-            offset = page * 5
-
-            result = await db.execute(
-                '''
-                SELECT title, description, status, id
-                FROM tasks
-                WHERE assigned_to = (?)
-                LIMIT 5 OFFSET ?
-                ''',
-                (call.from_user.id, offset)
-            )
-
-            results_tasks = await result.fetchall()
-
-            string = ''
-            buttons = []
-
-            
-            for result in results_tasks:
-                
-                string += f'{status_form[result[2]][0]} Задача: {result[0]}\n Статус: {status_form[result[2]][1]}\n_________________\n'
-
-                buttons.append(
-                [
-                    InlineKeyboardButton(
-                        text=f"Описание для '{result[0]}' ",
-                        callback_data=f"task_data_{result[3]}"
-                        )
-                    ]
-                )
-
-            if page == 0:
-                buttons.append(
-                [
-                    InlineKeyboardButton(
-                        text="➡️",
-                        callback_data=f"123"
-                        )
-                    ]
-                )
-            else:
-                buttons.remove(
-                    [
-                    InlineKeyboardButton(
-                        text="➡️",
-                        callback_data=f"123"
-                        )
-                    ]
-                )
-
-            on_tasks_kb = InlineKeyboardMarkup(
-                inline_keyboard=buttons
-            )
-            await call.message.edit_text(string, reply_markup=on_tasks_kb)
+            await my_func(call, page=current_page)
+        
+        elif call.data.startswith('page'):
+            page = int(call.data.split('_')[-1])
+            current_page += 1
+            await my_func(call, page=page)
 
 
 
