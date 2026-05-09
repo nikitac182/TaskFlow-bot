@@ -3,12 +3,12 @@ import aiosqlite
 from aiogram import Bot, Dispatcher
 from const import TOKEN
 from routers.user import router as user_router, setup_router
-# from routers.admin import router as admin_router, register_admin_commands
+from routers.admin import router as admin_router, setup_admin_router
 
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
-# dp.include_router(admin_router)
+dp.include_router(admin_router)
 dp.include_router(user_router)
 db = None
 
@@ -18,7 +18,7 @@ async def main():
     db = await aiosqlite.connect("sqlite.db")
 
     setup_router(bot=bot, db=db)
-    # register_admin_commands(dp, db)
+    setup_admin_router(bot=bot, db=db)
 
     await db.executescript(
     """
@@ -46,8 +46,9 @@ async def main():
         user_id INTEGER,
         text TEXT,
         file_id INTEGER,
-        status TEXT DEFAULT "pending",
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        status TEXT DEFAULT "in_progress",
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        type TEXT
     );
     """
 )
