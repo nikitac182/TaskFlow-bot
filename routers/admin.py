@@ -34,6 +34,8 @@ def setup_admin_router(
 
         items = await result.fetchall()
 
+        await message.answer("Вы в админ-зоне")
+
         for item in items:
             task_id, user_id, text, file_id, type_item = item
             user = await bot.get_chat(user_id)

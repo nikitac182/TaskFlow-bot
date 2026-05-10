@@ -16,7 +16,7 @@ from states.user_state import WithDrawState
 
 
 router = aiogram.Router()
-
+router.message.filter(lambda message: message.from_user.id != ADMIN_ID)
 
 def setup_router(
     bot: aiogram.Bot,

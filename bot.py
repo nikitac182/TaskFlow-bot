@@ -8,8 +8,8 @@ from routers.admin import router as admin_router, setup_admin_router
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
-dp.include_router(admin_router)
 dp.include_router(user_router)
+dp.include_router(admin_router)
 db = None
 
 async def main():
