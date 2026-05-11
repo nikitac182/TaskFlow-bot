@@ -22,6 +22,7 @@ from routers.user import (
 
 from routers.admin import (
     render_admin_page,
+    render_admin_zone_menu,
 )
 
 router = aiogram.Router()
@@ -55,6 +56,9 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
             page=page,
         )
 
+    elif data == 'back_admin':
+        await render_admin_zone_menu(callback)
+
     elif data.startswith('page_') or data.startswith('back_'):
         page = int(data.split('_')[-1])
         await state.update_data(current_page=page)
@@ -70,7 +74,6 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
     elif data == 'users_info':
         await render_admin_page(target=callback)
     
-    elif data == 'back_admin':
-        await 
+    
 
     await callback.answer()

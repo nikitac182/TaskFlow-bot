@@ -87,8 +87,12 @@ async def render_admin_page(
     else:
         await target.answer(caption, reply_markup=admin_kb_2)
 
-
-
 @router.message(CommandStart())
-async def render(message: Message):
-    await message.answer("Вы в админ-зоне", reply_markup=admin_kb)
+async def render_admin_zone_menu(
+    target: Message | CallbackQuery,
+):
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text("Вы в админ-зоне", reply_markup=admin_kb)
+    else:
+        await target.answer("Вы в админ-зоне", reply_markup=admin_kb)
+    
