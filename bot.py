@@ -3,8 +3,9 @@ import asyncio
 import aiosqlite
 from aiogram import Bot, Dispatcher
 from const import TOKEN
-from routers.user import router as user_router, setup_router
+import routers.user as user_module
 import routers.admin as admin_module
+import routers.callbacks as callbacks_module
 
 
 bot = Bot(token=TOKEN)
@@ -17,12 +18,18 @@ async def main():
 
     db = await aiosqlite.connect("sqlite.db")
 
-    setup_router(bot=bot, db=db)
+    user_module.bot = bot
+    user_module.db = db
+
     admin_module.bot = bot
     admin_module.db = db
-    
+
+    callbacks_module.bot = bot
+    callbacks_module.db = db
+
+    dp.include_router(callbacks_module.router)
     dp.include_router(admin_module.router)
-    dp.include_router(user_router)
+    dp.include_router(user_module.router)
 
     await db.executescript(
     """

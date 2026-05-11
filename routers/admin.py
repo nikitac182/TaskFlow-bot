@@ -28,11 +28,6 @@ async def render(message: Message):
     
     await message.answer("Вы в админ-зоне", reply_markup=admin_kb)
     
-# ✅ Лучше использовать фильтр прямо в декораторе
-@router.callback_query(lambda c: c.data == 'k')
-async def callbacks(call: CallbackQuery):
-    await call.message.edit_text("123")
-    await call.answer()
 
 @router.message(lambda m: m.text == 'Пользователи')
 async def users_admin(message: Message):
