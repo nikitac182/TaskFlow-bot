@@ -16,10 +16,10 @@ from states.user_state import WithDrawState
 
 
 router = aiogram.Router()
-router.message.filter(lambda message: message.from_user.id != ADMIN_ID)
-
 bot: aiogram.Bot | None = None
 db: aiosqlite.Connection | None = None
+admins = None
+
 
 async def render_tasks_page(
     target: Message | CallbackQuery,

@@ -7,7 +7,6 @@ import routers.user as user_module
 import routers.admin as admin_module
 import routers.callbacks as callbacks_module
 
-
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
@@ -17,19 +16,6 @@ async def main():
     global db
 
     db = await aiosqlite.connect("sqlite.db")
-
-    user_module.bot = bot
-    user_module.db = db
-
-    admin_module.bot = bot
-    admin_module.db = db
-
-    callbacks_module.bot = bot
-    callbacks_module.db = db
-
-    dp.include_router(callbacks_module.router)
-    dp.include_router(admin_module.router)
-    dp.include_router(user_module.router)
 
     await db.executescript(
     """
@@ -61,11 +47,45 @@ async def main():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         type TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS admins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        telegram_id INTEGER UNIQUE NOT NULL,
+        username TEXT,
+        role TEXT DEFAULT 'admin',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     """
 )
+    await db.commit()   
 
-    await db.commit()
+    result = await db.execute(
+        '''
+        SELECT telegram_id
+        FROM users
+        WHERE is_admin = 1
+        '''
+    )
+
+    users = await result.fetchall()
+    admins = [int(user[0]) for user in users]
+
+    user_module.bot = bot
+    user_module.db = db
+    user_module.admins = admins
+
+    admin_module.bot = bot
+    admin_module.db = db
+    admin_module.admins = admins
     
+
+    callbacks_module.bot = bot
+    callbacks_module.db = db
+
+    dp.include_router(callbacks_module.router)
+    dp.include_router(admin_module.router)
+    dp.include_router(user_module.router)
+
     try:
         await dp.start_polling(bot)
     finally:

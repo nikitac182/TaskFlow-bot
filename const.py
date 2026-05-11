@@ -1,11 +1,11 @@
 import os
+import aiogram
+import aiosqlite
 from dotenv import load_dotenv
 from aiogram.types import Message
 
 load_dotenv()
 
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 TOKEN = os.getenv("TOKEN")
 
 status_form = {

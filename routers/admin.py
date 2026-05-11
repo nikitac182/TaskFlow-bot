@@ -1,4 +1,5 @@
 # admin.py
+
 import aiogram
 import aiosqlite
 
@@ -15,12 +16,12 @@ from const import *
 from keyboards import *
 from states.admin_state import *
 
-
 router = aiogram.Router()
-router.message.filter(lambda m: m.from_user.id == ADMIN_ID)
+admins = None
 
-bot: aiogram.Bot | None = None
 db: aiosqlite.Connection | None = None
+bot: aiogram.Bot | None = None
+
 
 async def render_admin_page(
     target: Message | CallbackQuery,
@@ -92,7 +93,91 @@ async def render_admin_zone_menu(
     target: Message | CallbackQuery,
 ):
     if isinstance(target, CallbackQuery):
-        await target.message.edit_text("Вы в админ-зоне", reply_markup=admin_kb)
+        await target.message.edit_text(f'Вы в админ-зоне', reply_markup=admin_kb)
     else:
-        await target.answer("Вы в админ-зоне", reply_markup=admin_kb)
-    
+        await target.answer(f'Вы в админ-зоне', reply_markup=admin_kb)
+
+async def render_user_full_info(
+        
+    target: Message | CallbackQuery,
+    id=None
+):
+    result = await db.execute(
+        '''
+        SELECT id, telegram_id, username, created_at, is_admin
+        FROM users
+        WHERE id = ?
+        ''',
+        (id, )
+    )
+
+    user = await result.fetchone()
+
+    id, telegram_id, username, created_at, is_admin = user
+
+    caption = f'''
+👤 Пользователь #{id}
+
+━━━━━━━━━━━━━━━
+
+🆔 Telegram ID:
+{telegram_id}
+
+👤 Username:
+@{username}
+
+🛡 Роль:
+{"Пользователь" if is_admin != 1 else "Админ"}
+
+📅 Дата регистрации:
+{created_at}
+
+━━━━━━━━━━━━━━━
+'''
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text(caption, reply_markup=admin_back_kb)
+    else:
+        await target.answer(caption, reply_markup=admin_back_kb)
+
+async def admin_make_admin(
+    target: Message | CallbackQuery,
+    id=None,
+):
+    user_id = id
+
+    await db.execute(
+        '''
+        UPDATE users
+        SET is_admin = 1
+        WHERE id = (?)
+        ''',
+        (user_id,)
+    )
+
+    await db.commit()
+
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text("Админ успешно добавлен.", reply_markup=admin_back_kb_2)
+    else:
+        await target.answer('Админ успешно добавлен.', reply_markup=admin_back_kb_2)
+
+async def admin_delete_user(
+    target: Message | CallbackQuery,
+    id=None,
+):
+    user_id = id
+
+    await db.execute(
+        '''
+        DELETE
+        FROM users
+        WHERE id = ?
+        ''',
+        (user_id,)
+    )
+    await db.commit()
+
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text("Пользователь успешно удален.", reply_markup=admin_back_kb_2)
+    else:
+        await target.answer('Пользователь успешно удален.', reply_markup=admin_back_kb_2)

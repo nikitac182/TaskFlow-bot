@@ -7,3 +7,6 @@ class AddBalanceState(StatesGroup):
 class ReduceBalanceState(StatesGroup):
     amount = State()
     id = State()
+
+class AdminStates(StatesGroup):
+    waiting_for_id = State()

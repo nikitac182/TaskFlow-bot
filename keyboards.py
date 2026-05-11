@@ -35,11 +35,34 @@ back_kb_2 = InlineKeyboardMarkup(
 admin_kb = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="Пользователи", callback_data='users_info')
+            InlineKeyboardButton(text="Пользователи", callback_data='admin_users_menu')
         ],
         [
-            InlineKeyboardButton(text="Задачи", callback_data='tasks_1')
+            InlineKeyboardButton(text="Задачи", callback_data='admin_tasks_menu')
         ]
     ],
+)
+admin_back_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Выдать задачу", callback_data='admin_give_task')
+        ],
+        [
+            InlineKeyboardButton(text="❌ Удалить пользователя", callback_data='admin_delete_user')
+        ],
+        [
+            InlineKeyboardButton(text="🛡 Сделать админом", callback_data='admin_make_admin')
+        ],
+        [
+            InlineKeyboardButton(text="🔙 Назад", callback_data='admin_users_back')
+        ],
+    ],
+)
 
+admin_back_kb_2 = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔙 Назад", callback_data='admin_users_back')
+        ],
+    ],
 )
