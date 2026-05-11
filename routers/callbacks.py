@@ -14,7 +14,15 @@ from const import *
 from keyboards import *
 from states.user_state import WithDrawState
 
-from routers.user import render_task_description, render_tasks_page, render_submission_menu
+from routers.user import (
+    render_task_description,
+    render_tasks_page,
+    render_submission_menu
+    )
+
+from routers.admin import (
+    render_admin_page,
+)
 
 router = aiogram.Router()
 
@@ -40,6 +48,13 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
     elif data == 'p_back_2':
         await render_task_description(callback, task_id=current_task_id)
 
+    elif data.startswith('next_page_') or data.startswith('back_page_'):
+        page = int(data.split('_')[-1])
+        await render_admin_page(
+            target=callback,
+            page=page,
+        )
+
     elif data.startswith('page_') or data.startswith('back_'):
         page = int(data.split('_')[-1])
         await state.update_data(current_page=page)
@@ -49,7 +64,13 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
         await render_submission_menu(callback)
         await state.set_state(WithDrawState.request)
 
-    elif data == 'k':
+    elif data == 'open_user':
         await callback.message.edit_text("123")
+
+    elif data == 'users_info':
+        await render_admin_page(target=callback)
     
+    elif data == 'back_admin':
+        await 
+
     await callback.answer()
