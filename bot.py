@@ -1,15 +1,15 @@
+#bot.py
 import asyncio
 import aiosqlite
 from aiogram import Bot, Dispatcher
 from const import TOKEN
 from routers.user import router as user_router, setup_router
-from routers.admin import router as admin_router, setup_admin_router
+import routers.admin as admin_module
 
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
-dp.include_router(user_router)
-dp.include_router(admin_router)
+
 db = None
 
 async def main():
@@ -18,7 +18,11 @@ async def main():
     db = await aiosqlite.connect("sqlite.db")
 
     setup_router(bot=bot, db=db)
-    setup_admin_router(bot=bot, db=db)
+    admin_module.bot = bot
+    admin_module.db = db
+    
+    dp.include_router(admin_module.router)
+    dp.include_router(user_router)
 
     await db.executescript(
     """
@@ -37,7 +41,7 @@ async def main():
         status TEXT DEFAULT "new",
         assigned_to INTEGER,
         created_by INTEGER,
-        created_ad TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     
     CREATE TABLE IF NOT EXISTS submissions (

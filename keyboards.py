@@ -32,20 +32,9 @@ back_kb_2 = InlineKeyboardMarkup(
     ]
 )
 
-admin_kb = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [InlineKeyboardButton(text="Добавить задачу", callback_data="add_task")],
-
-        [InlineKeyboardButton(text="Изменить номер", callback_data="change_number") ],
-
-        [
-            InlineKeyboardButton(text="Пользователи", callback_data="users"),
-            InlineKeyboardButton(text="Админы", callback_data="admins")  
-        ],
-
-        [InlineKeyboardButton(text="Задания", callback_data="tasks") ],
-
-        [InlineKeyboardButton(text="Заявки", callback_data="requests") ],
+admin_kb = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Пользователи"), KeyboardButton(text="Задачи")]
     ],
-    resize_keyboard=True,
+    resize_keyboard=True
 )
