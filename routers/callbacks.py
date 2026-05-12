@@ -10,7 +10,7 @@ from aiogram.types import (
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 
-from states.admin_state import AdminStates
+from states.admin_state import AdminStates, AdminNewStates
 from const import *
 from keyboards import *
 from states.user_state import WithDrawState
@@ -27,6 +27,8 @@ from routers.admin import (
     render_user_full_info,
     admin_make_admin,
     admin_delete_user,
+    admin_give_task,
+    admin_confirm_task,
 )
 
 router = aiogram.Router()
@@ -43,6 +45,11 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
     current_task_id: int = state_data.get('task_id', 0)
     admin_page: int = state_data.get('admin_page', 0)
     id: int = state_data.get('id', 0)
+    user_title = state_data.get('user_title', 0)
+    user_description = state_data.get('user_description', 0)
+    user_materials = state_data.get('user_materials', 0)
+    user_deadline = state_data.get('user_deadline', 0)
+    user_id = state_data.get('user_id', 0)
 
     if data.startswith('task_data_'):
         task_id = int(data.split('_')[-1])
@@ -88,10 +95,23 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
     elif data == 'admin_make_admin':
         await admin_make_admin(target=callback, id=id)
 
-    elif data =='admin_delete_user':
+    elif data == 'admin_delete_user':
         await admin_delete_user(target=callback, id=id)
 
-    await callback.answer()
+    elif data == 'admin_give_task':
+        
+        await callback.message.answer("Введите название задачи.")
+        await state.set_state(AdminNewStates.waiting_for_title)
+
+    elif data == 'admin_confirm':
+        await admin_confirm_task(
+            target=callback,
+            id=id,
+            user_title=user_title,
+            user_description=user_description,
+            user_materials=user_materials,
+            user_deadline=user_deadline
+        )
 
 @router.message(AdminStates.waiting_for_id)
 async def show_user_info(message: Message, state: FSMContext):
@@ -104,3 +124,43 @@ async def show_user_info(message: Message, state: FSMContext):
         target=message,
         id=user_id
     )
+
+@router.message(AdminNewStates.waiting_for_title)
+async def get_user_title(message: Message, state: FSMContext):
+    user_title = message.text
+    await state.update_data(user_title=user_title)
+    await message.answer("Введите описание задачи.")
+    await state.set_state(AdminNewStates.waiting_for_description)
+
+@router.message(AdminNewStates.waiting_for_description)
+async def get_user_description(message: Message, state: FSMContext):
+    user_description = message.text
+    await state.update_data(user_description=user_description)
+    await message.answer("Введите материалы к задаче.")
+    await state.set_state(AdminNewStates.waiting_for_materials)
+
+@router.message(AdminNewStates.waiting_for_materials)
+async def get_user_materials(message: Message, state: FSMContext):
+    user_materials = message.text
+    await state.update_data(user_materials=user_materials)
+    await message.answer("Введите дедлайн к задаче.")
+    await state.set_state(AdminNewStates.waiting_for_deadline)
+
+@router.message(AdminNewStates.waiting_for_deadline)
+async def get_user_deadline(message: Message, state: FSMContext):
+    user_deadline = message.text
+    await state.update_data(user_deadline=user_deadline)
+    data = await state.get_data()
+    user_title = data.get('user_title', 0)
+    id = data.get('id', 0)
+    user_description = data.get('user_title', 0)
+    user_materials = data.get('user_title', 0)
+    await admin_give_task(
+            target=message,
+            id=id,
+            user_title=user_title,
+            user_description=user_description,
+            user_materials=user_materials,
+            user_deadline=user_deadline
+        )
+    await state.set_state(None)

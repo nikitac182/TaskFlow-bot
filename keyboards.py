@@ -66,3 +66,13 @@ admin_back_kb_2 = InlineKeyboardMarkup(
         ],
     ],
 )
+
+admin_confirm_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text='✅ Подтвердить', callback_data='admin_confirm'),
+            InlineKeyboardButton(text='🔄 Заново', callback_data='admin_give_task')
+        ],
+        [InlineKeyboardButton(text='❌ Отмена', callback_data='admin_users_back')]
+    ]
+)

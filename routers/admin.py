@@ -162,6 +162,7 @@ async def admin_make_admin(
         await target.answer('Админ успешно добавлен.', reply_markup=admin_back_kb_2)
 
 async def admin_delete_user(
+
     target: Message | CallbackQuery,
     id=None,
 ):
@@ -181,3 +182,63 @@ async def admin_delete_user(
         await target.message.edit_text("Пользователь успешно удален.", reply_markup=admin_back_kb_2)
     else:
         await target.answer('Пользователь успешно удален.', reply_markup=admin_back_kb_2)
+
+
+async def admin_give_task(
+    target: Message | CallbackQuery,
+    id=None,
+    user_title=None,
+    user_description=None,
+    user_materials=None,
+    user_deadline=None
+):
+    caption = f"""
+📋 Проверьте данные:
+
+📌 Название: {user_title}
+📝 Описание: {user_description}
+📎 Материалы: {user_materials}
+📅 Дедлайн: {user_deadline}
+"""
+
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text(caption, reply_markup=admin_confirm_kb)
+    else:
+        await target.answer(caption, reply_markup=admin_confirm_kb)
+
+async def admin_confirm_task(
+    target: Message | CallbackQuery,
+    id=None,
+    user_title=None,
+    user_description=None,
+    user_materials=None,
+    user_deadline=None,
+
+):
+    
+    result = await db.execute(
+        '''
+        SELECT telegram_id
+        FROM users
+        WHERE id = ?
+        ''',
+        (id, )
+    )
+    res = await result.fetchone()
+    user_id = res[0]
+
+    await db.execute(
+        '''
+        INSERT INTO tasks
+        (title, description, assigned_to, created_by, materials, deadline)
+        values (?, ?, ?, ?, ?, ?)
+        ''',
+        (user_title, user_description, user_id, target.from_user.id, user_materials, user_deadline)
+    )
+
+    await db.commit()
+
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text("Вы успешно отправили задачу.", reply_markup=admin_back_kb_2)
+    else:
+        await target.answer("Вы успешно отправили задачу.", reply_markup=admin_back_kb_2)

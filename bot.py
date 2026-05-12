@@ -78,7 +78,6 @@ async def main():
     admin_module.db = db
     admin_module.admins = admins
     
-
     callbacks_module.bot = bot
     callbacks_module.db = db
 
