@@ -10,7 +10,7 @@ from aiogram.types import (
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 
-from states.admin_state import AdminStates, AdminNewStates
+from states.admin_state import AdminStates, AdminNewStates, AdminTaskStates
 from const import *
 from keyboards import *
 from states.user_state import WithDrawState
@@ -29,6 +29,10 @@ from routers.admin import (
     admin_delete_user,
     admin_give_task,
     admin_confirm_task,
+    admin_task_menu,
+    admin_open_task,
+    admin_confirms_task,
+    admin_rejects_task,
 )
 
 router = aiogram.Router()
@@ -42,7 +46,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
     data = callback.data
     state_data = await state.get_data()
     current_page: int = state_data.get('current_page', 0)
-    current_task_id: int = state_data.get('task_id', 0)
+    current_task_id: int = state_data.get('current_task_id', 0)
     admin_page: int = state_data.get('admin_page', 0)
     id: int = state_data.get('id', 0)
     user_title = state_data.get('user_title', 0)
@@ -70,6 +74,17 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
             page=page,
         )
 
+    elif data.startswith('task_next_page_') or data.startswith('task_back_page_'):
+        page = int(data.split('_')[-1])
+        await state.update_data(admin_page=page)
+        await admin_task_menu(
+            target=callback,
+            page=page,
+        )
+
+    elif data == 'admin_tasks_menu':
+        await admin_task_menu(target=callback)
+
     elif data == 'back_admin':
         await render_admin_zone_menu(callback)
 
@@ -86,6 +101,10 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.message.answer("Введите id пользователя")
         await state.set_state(AdminStates.waiting_for_id)
 
+    elif data == 'open_task':
+        await callback.message.answer("Введите id задачи")
+        await state.set_state(AdminTaskStates.waiting_for_id)
+
     elif data == 'admin_users_menu':
         await render_admin_page(target=callback)
     
@@ -98,8 +117,10 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
     elif data == 'admin_delete_user':
         await admin_delete_user(target=callback, id=id)
 
+    elif data == 'admin_task_back':
+        await render_admin_zone_menu(target=callback)
+
     elif data == 'admin_give_task':
-        
         await callback.message.answer("Введите название задачи.")
         await state.set_state(AdminNewStates.waiting_for_title)
 
@@ -112,6 +133,24 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
             user_materials=user_materials,
             user_deadline=user_deadline
         )
+    
+    elif data == 'admin_open_task':
+        await admin_open_task(
+            target=callback,
+            id=current_task_id
+        )
+    
+    elif data == 'admin_confirms_task':
+        await admin_confirms_task(
+            target=callback,
+            id=current_task_id
+        )
+    
+    elif data == 'admin_rejects_task':
+        await admin_rejects_task(
+            target=callback,
+            id=current_task_id
+        )
 
 @router.message(AdminStates.waiting_for_id)
 async def show_user_info(message: Message, state: FSMContext):
@@ -123,6 +162,17 @@ async def show_user_info(message: Message, state: FSMContext):
     await render_user_full_info(
         target=message,
         id=user_id
+    )
+@router.message(AdminTaskStates.waiting_for_id)
+async def show_task_info(message: Message, state: FSMContext):
+    
+    current_task_id = int(message.text)
+
+    await state.update_data(current_task_id=current_task_id)
+    await state.set_state(None)
+    await admin_open_task(
+        target=message,
+        id=current_task_id
     )
 
 @router.message(AdminNewStates.waiting_for_title)
@@ -153,8 +203,8 @@ async def get_user_deadline(message: Message, state: FSMContext):
     data = await state.get_data()
     user_title = data.get('user_title', 0)
     id = data.get('id', 0)
-    user_description = data.get('user_title', 0)
-    user_materials = data.get('user_title', 0)
+    user_description = data.get('user_description', 0)
+    user_materials = data.get('user_materials', 0)
     await admin_give_task(
             target=message,
             id=id,

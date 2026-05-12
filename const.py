@@ -11,7 +11,6 @@ TOKEN = os.getenv("TOKEN")
 status_form = {
     'rejected': ('🔴', 'отклонена'),
     'accepted': ('🟢', 'принята'),
-    'submitted': ('🔵', 'на расмотреннии'),
     'in_progress': ('🟠', 'в процессе'),
     'new': ('🆕', 'новая'),
 }

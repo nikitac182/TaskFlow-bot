@@ -183,7 +183,6 @@ async def admin_delete_user(
     else:
         await target.answer('Пользователь успешно удален.', reply_markup=admin_back_kb_2)
 
-
 async def admin_give_task(
     target: Message | CallbackQuery,
     id=None,
@@ -242,3 +241,158 @@ async def admin_confirm_task(
         await target.message.edit_text("Вы успешно отправили задачу.", reply_markup=admin_back_kb_2)
     else:
         await target.answer("Вы успешно отправили задачу.", reply_markup=admin_back_kb_2)
+
+async def admin_task_menu(
+    target: Message | CallbackQuery,
+    page=0
+):
+    offset = page * 20
+
+    result_2 = await db.execute(
+            '''
+            SELECT id, title
+            FROM tasks
+            LIMIT 20 OFFSET ?
+            ''',
+            (offset + 20, )
+        )
+
+    items_2 = await result_2.fetchall()
+
+    if page == 0:
+        variable_admin_kb = [
+            [InlineKeyboardButton(text='Открыть задачу.', callback_data='open_task')],
+            [
+                InlineKeyboardButton(text='➡️', callback_data=f'task_next_page_{page + 1}')
+            ],
+            [InlineKeyboardButton(text='🔙 Назад', callback_data='back_admin')]
+        ]
+    elif len(items_2) == 0:
+        variable_admin_kb = [
+            [InlineKeyboardButton(text='Открыть задачу.', callback_data='open_task')],
+            [
+                InlineKeyboardButton(text='⬅️', callback_data=f'task_back_page_{page - 1}'),
+            ],
+            [InlineKeyboardButton(text='🔙 Назад', callback_data='back_admin')]
+        ]
+    else:
+        variable_admin_kb = [
+            [InlineKeyboardButton(text='Открыть задачу.', callback_data='open_task')],
+            [
+                InlineKeyboardButton(text='⬅️', callback_data=f'task_back_page_{page - 1}'),
+                InlineKeyboardButton(text='➡️', callback_data=f'task_next_page_{page + 1}')
+            ],
+            [InlineKeyboardButton(text='🔙 Назад', callback_data='back_admin')]
+        ]
+
+    result = await db.execute(
+            '''
+            SELECT id, title
+            FROM tasks
+            LIMIT 20 OFFSET ?
+            ''',
+            (offset, )
+        )
+    caption = f'📋 Все задачи\n'
+    items = await result.fetchall()
+    for item in items:
+        id, title = item
+        caption += f'id: {id} -> "{title}"\n'
+    admin_kb_2 = InlineKeyboardMarkup(
+        inline_keyboard=variable_admin_kb
+    )
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text(caption, reply_markup=admin_kb_2)
+    else:
+        await target.answer(caption, reply_markup=admin_kb_2)
+
+async def admin_open_task(
+    target: Message | CallbackQuery,
+    id=None
+):
+    result = await db.execute(
+        '''
+        SELECT title, description, materials, deadline, status, assigned_to
+        FROM tasks
+        WHERE id = (?)
+        ''',
+        (id,)
+    )
+
+    data = await result.fetchone()
+
+    title, description, materials, deadline, status, assigned_to = data
+    try:
+        user = await bot.get_chat(assigned_to)
+        username = user.username
+    except:
+        username = None
+    caption = f'''
+📋 Задача #{id}
+
+━━━━━━━━━━━━━━━
+
+📝 Название:
+{title}
+
+📄 Описание:
+{description}
+
+📎 Материалы:
+{materials}
+
+⏰ Дедлайн:
+{deadline}
+
+📌 Статус:
+{status_form[status][0]} {status_form[status][1]}
+
+━━━━━━━━━━━━━━━
+
+👤 Исполнитель:
+@{username}
+ 
+⸻
+'''
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text(caption, reply_markup=admin_open_task_kb)
+    else:
+        await target.answer(caption, reply_markup=admin_open_task_kb)
+
+async def admin_confirms_task(
+    target: Message | CallbackQuery,
+    id=None
+):
+    await db.execute(
+        '''
+        UPDATE tasks
+        SET status = 'accepted'
+        WHERE id = ?
+        ''',
+        (id,)
+    )
+    await db.commit()
+
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text("Задача подтверждена", reply_markup=admin_task_back_kb_2)
+    else:
+        await target.answer("Задача подтверждена", reply_markup=admin_task_back_kb_2)
+
+async def admin_rejects_task(
+    target: Message | CallbackQuery,
+    id=None
+):
+    await db.execute(
+        '''
+        UPDATE tasks
+        SET status = 'rejected'
+        WHERE id = ?
+        ''',
+        (id,)
+    )
+    await db.commit()
+
+    if isinstance(target, CallbackQuery):
+        await target.message.edit_text("Задача отклонена", reply_markup=admin_task_back_kb_2)
+    else:
+        await target.answer("Задача отклонена", reply_markup=admin_task_back_kb_2)

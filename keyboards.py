@@ -59,10 +59,19 @@ admin_back_kb = InlineKeyboardMarkup(
     ],
 )
 
+
 admin_back_kb_2 = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(text="🔙 Назад", callback_data='admin_users_back')
+        ],
+    ],
+)
+
+admin_task_back_kb_2 = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔙 Назад", callback_data='admin_task_back')
         ],
     ],
 )
@@ -74,5 +83,13 @@ admin_confirm_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text='🔄 Заново', callback_data='admin_give_task')
         ],
         [InlineKeyboardButton(text='❌ Отмена', callback_data='admin_users_back')]
+    ]
+)
+
+admin_open_task_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+            [InlineKeyboardButton(text='✅ Принять', callback_data='admin_confirms_task')],
+            [InlineKeyboardButton(text='❌ Отклонить', callback_data='admin_rejects_task')],
+            [InlineKeyboardButton(text='🗑 Удалить задачу', callback_data='admin_delete_task')],
     ]
 )

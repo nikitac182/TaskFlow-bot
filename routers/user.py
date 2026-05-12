@@ -197,7 +197,8 @@ async def open_tasks(message: Message) -> None:
 
 @router.message(lambda m: m.text == 'Поддержка')
 async def support(message: Message) -> None:
-    await message.answer(f'По всем вопросам:\n{ADMIN_USERNAME}')
+    await message.answer(f'По всем вопросам: @Nekitnnn')
+
 
 @router.message(WithDrawState.request)
 async def handle_submission(message: Message, state: FSMContext) -> None:

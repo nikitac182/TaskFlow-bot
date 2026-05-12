@@ -11,6 +11,9 @@ class ReduceBalanceState(StatesGroup):
 class AdminStates(StatesGroup):
     waiting_for_id = State()
 
+class AdminTaskStates(StatesGroup):
+    waiting_for_id = State()
+
 class AdminNewStates(StatesGroup):
     waiting_for_title = State()
     waiting_for_description = State()
