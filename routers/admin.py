@@ -1,5 +1,4 @@
 # admin.py
-
 import aiogram
 import aiosqlite
 
@@ -13,48 +12,35 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 
 from const import *
+from utils import is_admin
 from keyboards import *
 from states.admin_state import *
 
 router = aiogram.Router()
-admins = None
 
 db: aiosqlite.Connection | None = None
 bot: aiogram.Bot | None = None
 
 
-async def render_admin_page(
-    target: Message | CallbackQuery,
-    page=0,
-):
-
+async def render_admin_page(target: Message | CallbackQuery, page=0):
     offset = page * 20
 
     result_2 = await db.execute(
-            '''
-            SELECT id, telegram_id, username, created_at, is_admin
-            FROM users
-            LIMIT 20 OFFSET ?
-            ''',
-            (offset + 20, )
-        )
-
+        'SELECT id FROM users LIMIT 20 OFFSET ?',
+        (offset + 20,)
+    )
     items_2 = await result_2.fetchall()
 
     if page == 0:
         variable_admin_kb = [
             [InlineKeyboardButton(text='Открыть пользователя.', callback_data='open_user')],
-            [
-                InlineKeyboardButton(text='➡️', callback_data=f'next_page_{page + 1}')
-            ],
+            [InlineKeyboardButton(text='➡️', callback_data=f'next_page_{page + 1}')],
             [InlineKeyboardButton(text='🔙 Назад', callback_data='back_admin')]
         ]
     elif len(items_2) == 0:
         variable_admin_kb = [
             [InlineKeyboardButton(text='Открыть пользователя.', callback_data='open_user')],
-            [
-                InlineKeyboardButton(text='⬅️', callback_data=f'back_page_{page - 1}'),
-            ],
+            [InlineKeyboardButton(text='⬅️', callback_data=f'back_page_{page - 1}')],
             [InlineKeyboardButton(text='🔙 Назад', callback_data='back_admin')]
         ]
     else:
@@ -68,51 +54,36 @@ async def render_admin_page(
         ]
 
     result = await db.execute(
-            '''
-            SELECT id, telegram_id, username, created_at, is_admin
-            FROM users
-            LIMIT 20 OFFSET ?
-            ''',
-            (offset, )
-        )
-    caption = f'👥 Пользователи\n'
+        'SELECT id, telegram_id, username, created_at, is_admin FROM users LIMIT 20 OFFSET ?',
+        (offset,)
+    )
+    caption = '👥 Пользователи\n'
     items = await result.fetchall()
     for item in items:
         id, telegram_id, username, created_at, is_admin = item
         caption += f'id: {id} -> @{username}\n'
-    admin_kb_2 = InlineKeyboardMarkup(
-        inline_keyboard=variable_admin_kb
-    )
+
+    admin_kb_2 = InlineKeyboardMarkup(inline_keyboard=variable_admin_kb)
+
     if isinstance(target, CallbackQuery):
         await target.message.edit_text(caption, reply_markup=admin_kb_2)
     else:
         await target.answer(caption, reply_markup=admin_kb_2)
 
-@router.message(CommandStart())
-async def render_admin_zone_menu(
-    target: Message | CallbackQuery,
-):
+
+async def render_admin_zone_menu(target: Message | CallbackQuery):
     if isinstance(target, CallbackQuery):
-        await target.message.edit_text(f'Вы в админ-зоне', reply_markup=admin_kb)
+        await target.message.edit_text('Вы в админ-зоне', reply_markup=admin_kb)
     else:
-        await target.answer(f'Вы в админ-зоне', reply_markup=admin_kb)
+        await target.answer('Вы в админ-зоне', reply_markup=admin_kb)
 
-async def render_user_full_info(
-        
-    target: Message | CallbackQuery,
-    id=None
-):
+
+async def render_user_full_info(target: Message | CallbackQuery, id=None):
     result = await db.execute(
-        '''
-        SELECT id, telegram_id, username, created_at, is_admin
-        FROM users
-        WHERE id = ?
-        ''',
-        (id, )
+        'SELECT id, telegram_id, username, created_at, is_admin FROM users WHERE id = ?',
+        (id,)
     )
-
     user = await result.fetchone()
-
     id, telegram_id, username, created_at, is_admin = user
 
     caption = f'''
@@ -139,21 +110,9 @@ async def render_user_full_info(
     else:
         await target.answer(caption, reply_markup=admin_back_kb)
 
-async def admin_make_admin(
-    target: Message | CallbackQuery,
-    id=None,
-):
-    user_id = id
 
-    await db.execute(
-        '''
-        UPDATE users
-        SET is_admin = 1
-        WHERE id = (?)
-        ''',
-        (user_id,)
-    )
-
+async def admin_make_admin(target: Message | CallbackQuery, id=None):
+    await db.execute('UPDATE users SET is_admin = 1 WHERE id = ?', (id,))
     await db.commit()
 
     if isinstance(target, CallbackQuery):
@@ -161,21 +120,9 @@ async def admin_make_admin(
     else:
         await target.answer('Админ успешно добавлен.', reply_markup=admin_back_kb_2)
 
-async def admin_delete_user(
 
-    target: Message | CallbackQuery,
-    id=None,
-):
-    user_id = id
-
-    await db.execute(
-        '''
-        DELETE
-        FROM users
-        WHERE id = ?
-        ''',
-        (user_id,)
-    )
+async def admin_delete_user(target: Message | CallbackQuery, id=None):
+    await db.execute('DELETE FROM users WHERE id = ?', (id,))
     await db.commit()
 
     if isinstance(target, CallbackQuery):
@@ -183,13 +130,11 @@ async def admin_delete_user(
     else:
         await target.answer('Пользователь успешно удален.', reply_markup=admin_back_kb_2)
 
+
 async def admin_give_task(
     target: Message | CallbackQuery,
-    id=None,
-    user_title=None,
-    user_description=None,
-    user_materials=None,
-    user_deadline=None
+    id=None, user_title=None, user_description=None,
+    user_materials=None, user_deadline=None
 ):
     caption = f"""
 📋 Проверьте данные:
@@ -199,42 +144,31 @@ async def admin_give_task(
 📎 Материалы: {user_materials}
 📅 Дедлайн: {user_deadline}
 """
-
     if isinstance(target, CallbackQuery):
         await target.message.edit_text(caption, reply_markup=admin_confirm_kb)
     else:
         await target.answer(caption, reply_markup=admin_confirm_kb)
 
+
 async def admin_confirm_task(
     target: Message | CallbackQuery,
-    id=None,
-    user_title=None,
-    user_description=None,
-    user_materials=None,
-    user_deadline=None,
-
+    id=None, user_title=None, user_description=None,
+    user_materials=None, user_deadline=None,
 ):
-    
     result = await db.execute(
-        '''
-        SELECT telegram_id
-        FROM users
-        WHERE id = ?
-        ''',
-        (id, )
+        'SELECT telegram_id FROM users WHERE id = ?',
+        (id,)
     )
     res = await result.fetchone()
     user_id = res[0]
 
     await db.execute(
         '''
-        INSERT INTO tasks
-        (title, description, assigned_to, created_by, materials, deadline)
-        values (?, ?, ?, ?, ?, ?)
+        INSERT INTO tasks (title, description, assigned_to, created_by, materials, deadline)
+        VALUES (?, ?, ?, ?, ?, ?)
         ''',
         (user_title, user_description, user_id, target.from_user.id, user_materials, user_deadline)
     )
-
     await db.commit()
 
     if isinstance(target, CallbackQuery):
@@ -242,37 +176,26 @@ async def admin_confirm_task(
     else:
         await target.answer("Вы успешно отправили задачу.", reply_markup=admin_back_kb_2)
 
-async def admin_task_menu(
-    target: Message | CallbackQuery,
-    page=0
-):
+
+async def admin_task_menu(target: Message | CallbackQuery, page=0):
     offset = page * 20
 
     result_2 = await db.execute(
-            '''
-            SELECT id, title
-            FROM tasks
-            LIMIT 20 OFFSET ?
-            ''',
-            (offset + 20, )
-        )
-
+        'SELECT id FROM tasks LIMIT 20 OFFSET ?',
+        (offset + 20,)
+    )
     items_2 = await result_2.fetchall()
 
     if page == 0:
         variable_admin_kb = [
             [InlineKeyboardButton(text='Открыть задачу.', callback_data='open_task')],
-            [
-                InlineKeyboardButton(text='➡️', callback_data=f'task_next_page_{page + 1}')
-            ],
+            [InlineKeyboardButton(text='➡️', callback_data=f'task_next_page_{page + 1}')],
             [InlineKeyboardButton(text='🔙 Назад', callback_data='back_admin')]
         ]
     elif len(items_2) == 0:
         variable_admin_kb = [
             [InlineKeyboardButton(text='Открыть задачу.', callback_data='open_task')],
-            [
-                InlineKeyboardButton(text='⬅️', callback_data=f'task_back_page_{page - 1}'),
-            ],
+            [InlineKeyboardButton(text='⬅️', callback_data=f'task_back_page_{page - 1}')],
             [InlineKeyboardButton(text='🔙 Назад', callback_data='back_admin')]
         ]
     else:
@@ -286,47 +209,37 @@ async def admin_task_menu(
         ]
 
     result = await db.execute(
-            '''
-            SELECT id, title
-            FROM tasks
-            LIMIT 20 OFFSET ?
-            ''',
-            (offset, )
-        )
-    caption = f'📋 Все задачи\n'
+        'SELECT id, title FROM tasks LIMIT 20 OFFSET ?',
+        (offset,)
+    )
+    caption = '📋 Все задачи\n'
     items = await result.fetchall()
     for item in items:
         id, title = item
         caption += f'id: {id} -> "{title}"\n'
-    admin_kb_2 = InlineKeyboardMarkup(
-        inline_keyboard=variable_admin_kb
-    )
+
+    admin_kb_2 = InlineKeyboardMarkup(inline_keyboard=variable_admin_kb)
+
     if isinstance(target, CallbackQuery):
         await target.message.edit_text(caption, reply_markup=admin_kb_2)
     else:
         await target.answer(caption, reply_markup=admin_kb_2)
 
-async def admin_open_task(
-    target: Message | CallbackQuery,
-    id=None
-):
+
+async def admin_open_task(target: Message | CallbackQuery, id=None):
     result = await db.execute(
-        '''
-        SELECT title, description, materials, deadline, status, assigned_to
-        FROM tasks
-        WHERE id = (?)
-        ''',
+        'SELECT title, description, materials, deadline, status, assigned_to FROM tasks WHERE id = ?',
         (id,)
     )
-
     data = await result.fetchone()
-
     title, description, materials, deadline, status, assigned_to = data
+
     try:
         user = await bot.get_chat(assigned_to)
         username = user.username
     except:
         username = None
+
     caption = f'''
 📋 Задача #{id}
 
@@ -351,7 +264,7 @@ async def admin_open_task(
 
 👤 Исполнитель:
 @{username}
- 
+
 ⸻
 '''
     if isinstance(target, CallbackQuery):
@@ -359,18 +272,9 @@ async def admin_open_task(
     else:
         await target.answer(caption, reply_markup=admin_open_task_kb)
 
-async def admin_confirms_task(
-    target: Message | CallbackQuery,
-    id=None
-):
-    await db.execute(
-        '''
-        UPDATE tasks
-        SET status = 'accepted'
-        WHERE id = ?
-        ''',
-        (id,)
-    )
+
+async def admin_confirms_task(target: Message | CallbackQuery, id=None):
+    await db.execute("UPDATE tasks SET status = 'accepted' WHERE id = ?", (id,))
     await db.commit()
 
     if isinstance(target, CallbackQuery):
@@ -378,18 +282,9 @@ async def admin_confirms_task(
     else:
         await target.answer("Задача подтверждена", reply_markup=admin_task_back_kb_2)
 
-async def admin_rejects_task(
-    target: Message | CallbackQuery,
-    id=None
-):
-    await db.execute(
-        '''
-        UPDATE tasks
-        SET status = 'rejected'
-        WHERE id = ?
-        ''',
-        (id,)
-    )
+
+async def admin_rejects_task(target: Message | CallbackQuery, id=None):
+    await db.execute("UPDATE tasks SET status = 'rejected' WHERE id = ?", (id,))
     await db.commit()
 
     if isinstance(target, CallbackQuery):

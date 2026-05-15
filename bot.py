@@ -1,4 +1,4 @@
-#bot.py
+# bot.py
 import asyncio
 import aiosqlite
 from aiogram import Bot, Dispatcher
@@ -6,15 +6,12 @@ from const import TOKEN
 import routers.user as user_module
 import routers.admin as admin_module
 import routers.callbacks as callbacks_module
+from middlewares.db_middleware import DbMiddleware
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-db = None
-
 async def main():
-    global db
-
     db = await aiosqlite.connect("sqlite.db")
 
     await db.executescript(
@@ -34,7 +31,9 @@ async def main():
         status TEXT DEFAULT "new",
         assigned_to INTEGER,
         created_by INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        materials TEXT,
+        deadline TEXT
     );
     
     CREATE TABLE IF NOT EXISTS submissions (
@@ -56,28 +55,20 @@ async def main():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """
-)
-    await db.commit()   
-
-    result = await db.execute(
-        '''
-        SELECT telegram_id
-        FROM users
-        WHERE is_admin = 1
-        '''
     )
+    await db.commit()
 
-    users = await result.fetchall()
-    admins = [int(user[0]) for user in users]
+    # Передаём db через middleware — так он доступен везде включая фильтры
+    middleware = DbMiddleware(db=db)
+    dp.message.middleware(middleware)
+    dp.callback_query.middleware(middleware)
 
     user_module.bot = bot
     user_module.db = db
-    user_module.admins = admins
 
     admin_module.bot = bot
     admin_module.db = db
-    admin_module.admins = admins
-    
+
     callbacks_module.bot = bot
     callbacks_module.db = db
 

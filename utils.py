@@ -1,19 +1,7 @@
-import os
-import aiogram
 import aiosqlite
 from dotenv import load_dotenv
 from aiogram.types import Message
 
-load_dotenv()
-
-TOKEN = os.getenv("TOKEN")
-
-status_form = {
-    'rejected': ('🔴', 'отклонена'),
-    'accepted': ('🟢', 'принята'),
-    'in_progress': ('🟠', 'в процессе'),
-    'new': ('🆕', 'новая'),
-}
 
 async def is_admin(
         user_id: int,

@@ -11,14 +11,13 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 
 from const import *
+from utils import is_admin
 from keyboards import *
 from states.user_state import WithDrawState
-
 
 router = aiogram.Router()
 bot: aiogram.Bot | None = None
 db: aiosqlite.Connection | None = None
-admins = None
 
 
 async def render_tasks_page(
@@ -146,8 +145,6 @@ async def render_submission_menu(callback: CallbackQuery) -> None:
     await callback.message.edit_text(text, reply_markup=back_kb_2)
 
 
-# ─────────────────────────── handlers ───────────────────────────
-
 @router.message(CommandStart())
 async def start(message: Message) -> None:
 
@@ -156,11 +153,19 @@ async def start(message: Message) -> None:
         (message.from_user.id, message.from_user.username),
     )
     await db.commit()
-    await message.answer('Выбери кнопку:', reply_markup=kb)
+
+    if await is_admin(message.from_user.id, db):
+        await message.answer('Вы в админ-зоне', reply_markup=admin_kb)
+    else:
+        await message.answer('Выбери кнопку:', reply_markup=kb)
 
 
 @router.message(lambda m: m.text == 'Профиль')
 async def profile(message: Message) -> None:
+
+    if await is_admin(message.from_user.id, db):
+        await message.answer('❌ У вас нет прав для этого действия.', show_alert=True)
+        return
 
     done_cursor = await db.execute(
         'SELECT COUNT(*) FROM tasks WHERE assigned_to = ? AND status = "accepted"',
@@ -192,11 +197,19 @@ async def profile(message: Message) -> None:
 
 @router.message(lambda m: m.text == 'Мои задачи')
 async def open_tasks(message: Message) -> None:
+    if await is_admin(message.from_user.id, db):
+        await message.answer('❌ У вас нет прав для этого действия.', show_alert=True)
+        return
+    
     await render_tasks_page(message, page=0)
 
 
 @router.message(lambda m: m.text == 'Поддержка')
 async def support(message: Message) -> None:
+    if await is_admin(message.from_user.id, db):
+        await message.answer('❌ У вас нет прав для этого действия.', show_alert=True)
+        return
+    
     await message.answer(f'По всем вопросам: @Nekitnnn')
 
 

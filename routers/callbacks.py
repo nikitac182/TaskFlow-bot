@@ -7,19 +7,21 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
-from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 
 from states.admin_state import AdminStates, AdminNewStates, AdminTaskStates
 from const import *
 from keyboards import *
 from states.user_state import WithDrawState
+from filters import AdminFilter
+from utils import is_admin
+
 
 from routers.user import (
     render_task_description,
     render_tasks_page,
-    render_submission_menu
-    )
+    render_submission_menu,
+)
 
 from routers.admin import (
     render_admin_page,
@@ -40,10 +42,37 @@ router = aiogram.Router()
 bot: aiogram.Bot | None = None
 db: aiosqlite.Connection | None = None
 
+# Список callback_data которые доступны только админам
+ADMIN_CALLBACKS = {
+    'open_user', 'open_task', 'admin_users_menu', 'admin_users_back',
+    'admin_make_admin', 'admin_delete_user', 'admin_task_back',
+    'admin_give_task', 'admin_confirm', 'admin_open_task',
+    'admin_confirms_task', 'admin_rejects_task', 'admin_tasks_menu',
+    'back_admin',
+}
+
+
+
+
 @router.callback_query()
-async def callbacks(callback: CallbackQuery, state: FSMContext) -> None: 
+async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
 
     data = callback.data
+    user_id = callback.from_user.id
+
+    # Проверяем права на админские кнопки
+    is_admin_cb = (
+        data in ADMIN_CALLBACKS
+        or data.startswith('next_page_')
+        or data.startswith('back_page_')
+        or data.startswith('task_next_page_')
+        or data.startswith('task_back_page_')
+    )
+
+    if is_admin_cb and not await is_admin(user_id, db):
+        await callback.answer('❌ У вас нет прав для этого действия.', show_alert=True)
+        return
+
     state_data = await state.get_data()
     current_page: int = state_data.get('current_page', 0)
     current_task_id: int = state_data.get('current_task_id', 0)
@@ -53,7 +82,6 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
     user_description = state_data.get('user_description', 0)
     user_materials = state_data.get('user_materials', 0)
     user_deadline = state_data.get('user_deadline', 0)
-    user_id = state_data.get('user_id', 0)
 
     if data.startswith('task_data_'):
         task_id = int(data.split('_')[-1])
@@ -69,18 +97,12 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
     elif data.startswith('next_page_') or data.startswith('back_page_'):
         page = int(data.split('_')[-1])
         await state.update_data(admin_page=page)
-        await render_admin_page(
-            target=callback,
-            page=page,
-        )
+        await render_admin_page(target=callback, page=page)
 
     elif data.startswith('task_next_page_') or data.startswith('task_back_page_'):
         page = int(data.split('_')[-1])
         await state.update_data(admin_page=page)
-        await admin_task_menu(
-            target=callback,
-            page=page,
-        )
+        await admin_task_menu(target=callback, page=page)
 
     elif data == 'admin_tasks_menu':
         await admin_task_menu(target=callback)
@@ -107,7 +129,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
 
     elif data == 'admin_users_menu':
         await render_admin_page(target=callback)
-    
+
     elif data == 'admin_users_back':
         await render_admin_page(target=callback, page=admin_page)
 
@@ -133,84 +155,66 @@ async def callbacks(callback: CallbackQuery, state: FSMContext) -> None:
             user_materials=user_materials,
             user_deadline=user_deadline
         )
-    
+
     elif data == 'admin_open_task':
-        await admin_open_task(
-            target=callback,
-            id=current_task_id
-        )
-    
+        await admin_open_task(target=callback, id=current_task_id)
+
     elif data == 'admin_confirms_task':
-        await admin_confirms_task(
-            target=callback,
-            id=current_task_id
-        )
-    
+        await admin_confirms_task(target=callback, id=current_task_id)
+
     elif data == 'admin_rejects_task':
-        await admin_rejects_task(
-            target=callback,
-            id=current_task_id
-        )
+        await admin_rejects_task(target=callback, id=current_task_id)
+
+    await callback.answer()
+
 
 @router.message(AdminStates.waiting_for_id)
 async def show_user_info(message: Message, state: FSMContext):
-
     user_id = int(message.text)
-
     await state.update_data(id=user_id)
     await state.set_state(None)
-    await render_user_full_info(
-        target=message,
-        id=user_id
-    )
+    await render_user_full_info(target=message, id=user_id)
+
+
 @router.message(AdminTaskStates.waiting_for_id)
 async def show_task_info(message: Message, state: FSMContext):
-    
     current_task_id = int(message.text)
-
     await state.update_data(current_task_id=current_task_id)
     await state.set_state(None)
-    await admin_open_task(
-        target=message,
-        id=current_task_id
-    )
+    await admin_open_task(target=message, id=current_task_id)
+
 
 @router.message(AdminNewStates.waiting_for_title)
 async def get_user_title(message: Message, state: FSMContext):
-    user_title = message.text
-    await state.update_data(user_title=user_title)
+    await state.update_data(user_title=message.text)
     await message.answer("Введите описание задачи.")
     await state.set_state(AdminNewStates.waiting_for_description)
 
+
 @router.message(AdminNewStates.waiting_for_description)
 async def get_user_description(message: Message, state: FSMContext):
-    user_description = message.text
-    await state.update_data(user_description=user_description)
+    await state.update_data(user_description=message.text)
     await message.answer("Введите материалы к задаче.")
     await state.set_state(AdminNewStates.waiting_for_materials)
 
+
 @router.message(AdminNewStates.waiting_for_materials)
 async def get_user_materials(message: Message, state: FSMContext):
-    user_materials = message.text
-    await state.update_data(user_materials=user_materials)
+    await state.update_data(user_materials=message.text)
     await message.answer("Введите дедлайн к задаче.")
     await state.set_state(AdminNewStates.waiting_for_deadline)
 
+
 @router.message(AdminNewStates.waiting_for_deadline)
 async def get_user_deadline(message: Message, state: FSMContext):
-    user_deadline = message.text
-    await state.update_data(user_deadline=user_deadline)
+    await state.update_data(user_deadline=message.text)
     data = await state.get_data()
-    user_title = data.get('user_title', 0)
-    id = data.get('id', 0)
-    user_description = data.get('user_description', 0)
-    user_materials = data.get('user_materials', 0)
     await admin_give_task(
-            target=message,
-            id=id,
-            user_title=user_title,
-            user_description=user_description,
-            user_materials=user_materials,
-            user_deadline=user_deadline
-        )
+        target=message,
+        id=data.get('id', 0),
+        user_title=data.get('user_title'),
+        user_description=data.get('user_description'),
+        user_materials=data.get('user_materials'),
+        user_deadline=message.text
+    )
     await state.set_state(None)
